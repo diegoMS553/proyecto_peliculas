@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agregar una Nueva Película</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container my-5">
+        <h1 class="text-center">Agregar una Nueva Película</h1>
+        <form method="POST" action="{{ url_for('movie_create') }}" class="mt-4">
+            <div class="form-group">
+                <label for="title">Título</label>
+                <input type="text" name="title" class="form-control" required>
+            </div>
+
+            <div class="form-group">
+                <label for="director">Director</label>
+                <input type="text" name="director" class="form-control" required>
+            </div>
+
+            <div class="form-group">
+                <label for="genre">Género</label>
+                <input type="text" name="genre" class="form-control" required>
+            </div>
+
+            <div class="form-group">
+                <label for="year">Año</label>
+                <input type="number" name="year" class="form-control" required>
+            </div>
+
+            <div class="form-group">
+                <label for="synopsis">Sinopsis</label>
+                <textarea name="synopsis" class="form-control" rows="4"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="image_url">URL de la Imagen</label>
+                <input type="text" class="form-control" name="image_url">
+            </div>
+
+            <button type="submit" class="btn btn-success">Guardar</button>
+            <a href="{{ url_for('movies_list') }}" class="btn btn-secondary">Regresar a la lista</a>
+        </form>
+    </div>
+</body>
+</html>
