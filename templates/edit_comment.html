@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+
+{% block title %}Editar Comentario{% endblock %}
+
+{% block content %}
+    <div class="container my-5">
+        <h2>Editar Comentario</h2>
+        <form method="POST">
+            <div class="form-group">
+                <label for="comment">Comentario</label>
+                <textarea class="form-control" id="comment" name="comment" rows="3">{{ comment.comment }}</textarea>
+            </div>
+            <button type="submit" class="btn btn-primary">Actualizar Comentario</button>
+            <a href="{{ url_for('movie_detail', movie_id=movie_id) }}" class="btn btn-secondary">Cancelar</a>
+        </form>
+    </div>
+{% endblock %}
