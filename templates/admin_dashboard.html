@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <h1 class="mb-4">Dashboard de Administrador</h1>
+
+    <!-- Estadísticas -->
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card text-white bg-primary mb-3">
+                <div class="card-header">Total de Películas</div>
+                <div class="card-body">
+                    <h5 class="card-title">{{ total_movies }}</h5>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-white bg-success mb-3">
+                <div class="card-header">Usuarios Registrados</div>
+                <div class="card-body">
+                    <h5 class="card-title">{{ total_users }}</h5>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-white bg-warning mb-3">
+                <div class="card-header">Comentarios Totales</div>
+                <div class="card-body">
+                    <h5 class="card-title">{{ total_comments }}</h5>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Películas más valoradas -->
+    <h2 class="mt-5">Películas Más Valoradas</h2>
+    <table class="table table-striped mt-3">
+        <thead>
+            <tr>
+                <th>Título</th>
+                <th>Número de Ratings</th>
+                <th>Rating Promedio</th>
+                <th>Total de Comtarios</tr>
+            </tr>
+        </thead>
+        <tbody>
+            {% for movie in top_rated_movies %}
+            <tr>
+                <td>{{ movie.title }}</td>
+                <td>{{ movie.total_ratings  }}</td>
+                <td>{{ movie.average_rating | round(1) }}</td>
+                <td>{{ movie.total_comments }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    
+
+    <!-- Lista de Películas -->
+    <h2 class="mt-5">Lista de Películas</h2>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Image</th>
+                <th>Título</th>
+                <th>Género</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for movie in movies %}
+            <tr>
+                <td>{{ movie.id }}</td>
+                <td><img src="{{ movie.image_url }}" alt="{{ movie.title }}" style="width: 100px; height: auto;"></td>
+                <td>{{ movie.title }}</td>
+                <td>{{ movie.genre }}</td>
+                <td>
+                    <a href="{{ url_for('edit_movie', movie_id=movie.id) }}" class="btn btn-warning">Editar</a>
+                    <form action="{{ url_for('movie_delete', movie_id=movie['id']) }}" method="post" style="display:inline;">
+                        <input type="hidden" name="next" value="admin_dashboard">
+                        <button type="submit" class="btn btn-danger" onclick="return confirm('¿Estás seguro de que deseas eliminar esta película?');">Eliminar</button>
+                    </form>
+                    <a href="{{ url_for('movie_comments', movie_id=movie['id']) }}" class="btn btn-info">Ver Comentarios</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Chart.js para Gráficos -->
+<canvas id="movieRatingsChart" width="400" height="200"></canvas>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const ctx = document.getElementById('movieRatingsChart').getContext('2d');
+    const movieRatingsChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: {{ top_rated_movies|map(attribute='title')|list }},
+            datasets: [{
+                label: 'Rating Promedio',
+                data: {{ top_rated_movies|map(attribute='average_rating')|list }},
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}
