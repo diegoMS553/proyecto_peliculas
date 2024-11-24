@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+
+{% block title %}User Dashboard{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h1 class="text-center">Bienvenido, {{ session['username'] }}</h1>
+    <p class="text-center">Explora y administra tus películas.</p>
+
+    <!-- Películas favoritas -->
+    <h2>Mis Películas Favoritas</h2>
+    <div class="row">
+        {% if favorites %}
+            {% for movie in favorites %}
+                <div class="col-md-3">
+                    <div class="card">
+                        <img src="{{ movie['image_url'] }}" class="card-img-top" alt="{{ movie['title'] }}">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ movie['title'] }}</h5>
+                            <a href="{{ url_for('movie_detail', movie_id=movie['id']) }}" class="btn btn-primary">Ver Detalles</a>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <p>No tienes películas favoritas aún.</p>
+        {% endif %}
+    </div>
+
+    <h2>Crear Nueva Lista Personalizada</h2>
+    <form method="POST" action="{{ url_for('create_list') }}" class="form-inline mb-4">
+        <div class="form-group">
+            <input type="text" name="list_name" class="form-control mr-2" placeholder="Nombre de la lista" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Crear Lista</button>
+    </form>
+    
+
+    <!-- Lista personalizada de películas -->
+    <h2>Mis Listas Personalizadas</h2>
+    {% for custom_list in custom_lists %}
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>{{ custom_list.name }} ({{ custom_list.created_at }})</h5>
+            </div>
+            <div class="card-body">
+                {% if custom_list.movies %}
+                    <div class="row">
+                        {% for movie in custom_list.movies %}
+                            <div class="col-md-3">
+                                <div class="card">
+                                    <img src="{{ movie['image_url'] }}" class="card-img-top" alt="{{ movie['title'] }}">
+                                    <div class="card-body">
+                                        <h5 class="card-title">{{ movie['title'] }}</h5>
+                                        <a href="{{ url_for('movie_detail', movie_id=movie['id']) }}" class="btn btn-primary btn-sm">Ver Detalles</a>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p>No hay películas en esta lista aún.</p>
+                {% endif %}
+            </div>
+        </div>
+    {% endfor %}
+    
+    
+</div>
+{% endblock %}
