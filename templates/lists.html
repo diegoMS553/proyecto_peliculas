@@ -1,0 +1,15 @@
+<h2>Mis Listas Personalizadas</h2>
+<form method="POST">
+    <div class="form-group">
+        <input type="text" name="list_name" placeholder="Nombre de la lista" class="form-control" required>
+    </div>
+    <button class="btn btn-primary">Crear Lista</button>
+</form>
+
+<ul>
+    {% for lst in lists %}
+        <li>
+            <a href="{{ url_for('view_list', list_id=lst['id']) }}">{{ lst['name'] }}</a>
+        </li>
+    {% endfor %}
+</ul>
