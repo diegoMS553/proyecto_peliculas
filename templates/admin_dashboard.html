@@ -1,118 +1,222 @@
 {% extends 'base.html' %}
 
-{% block title %}Admin Dashboard{% endblock %}
+{% block title %}Dashboard Administrador - IcoFlix{% endblock %}
 
 {% block content %}
-<div class="container my-5">
-    <h1 class="mb-4">Dashboard de Administrador</h1>
+<div class="container">
+    <div class="row justify-content-center mb-5">
+        <div class="col-lg-11">
+            <!-- Header Section -->
+            <div class="text-center mb-5">
+                <div class="user-avatar mx-auto mb-3" style="width: 80px; height: 80px; font-size: 2rem;">
+                    <i class="fas fa-user-shield"></i>
+                </div>
+                <h1 class="text-white mb-2">Dashboard de Administrador</h1>
+                <p class="text-white-50">Panel de control y gestión de IcoFlix</p>
+            </div>
 
-    <!-- Estadísticas -->
-    <div class="row">
-        <div class="col-md-4">
-            <div class="card text-white bg-primary mb-3">
-                <div class="card-header">Total de Películas</div>
-                <div class="card-body">
-                    <h5 class="card-title">{{ total_movies }}</h5>
+            <!-- Estadísticas Cards -->
+            <div class="row g-4 mb-5">
+                <div class="col-md-4">
+                    <div class="card bg-dark border-0 shadow-lg h-100">
+                        <div class="card-body p-4">
+                            <div class="d-flex align-items-center mb-3">
+                                <div class="rounded-circle bg-primary bg-opacity-25 p-3 me-3">
+                                    <i class="fas fa-film text-primary fa-2x"></i>
+                                </div>
+                                <h3 class="text-white mb-0">Películas</h3>
+                            </div>
+                            <h2 class="text-primary mb-0">{{ total_movies }}</h2>
+                            <p class="text-white-50">Total en catálogo</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-dark border-0 shadow-lg h-100">
+                        <div class="card-body p-4">
+                            <div class="d-flex align-items-center mb-3">
+                                <div class="rounded-circle bg-danger bg-opacity-25 p-3 me-3">
+                                    <i class="fas fa-users text-danger fa-2x"></i>
+                                </div>
+                                <h3 class="text-white mb-0">Usuarios</h3>
+                            </div>
+                            <h2 class="text-danger mb-0">{{ total_users }}</h2>
+                            <p class="text-white-50">Registrados</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-dark border-0 shadow-lg h-100">
+                        <div class="card-body p-4">
+                            <div class="d-flex align-items-center mb-3">
+                                <div class="rounded-circle bg-warning bg-opacity-25 p-3 me-3">
+                                    <i class="fas fa-comments text-warning fa-2x"></i>
+                                </div>
+                                <h3 class="text-white mb-0">Comentarios</h3>
+                            </div>
+                            <h2 class="text-warning mb-0">{{ total_comments }}</h2>
+                            <p class="text-white-50">Totales</p>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card text-white bg-success mb-3">
-                <div class="card-header">Usuarios Registrados</div>
+
+            <!-- Gráfico -->
+            <div class="card bg-dark border-0 shadow-lg mb-5">
+                <div class="card-header bg-transparent border-bottom border-secondary">
+                    <h2 class="text-white mb-0">
+                        <i class="fas fa-chart-bar me-2 text-danger"></i>Estadísticas de Ratings
+                    </h2>
+                </div>
                 <div class="card-body">
-                    <h5 class="card-title">{{ total_users }}</h5>
+                    <canvas id="movieRatingsChart" height="100"></canvas>
                 </div>
             </div>
-        </div>
-        <div class="col-md-4">
-            <div class="card text-white bg-warning mb-3">
-                <div class="card-header">Comentarios Totales</div>
+
+            <!-- Películas Más Valoradas -->
+            <div class="card bg-dark border-0 shadow-lg mb-5">
+                <div class="card-header bg-transparent border-bottom border-secondary">
+                    <h2 class="text-white mb-0">
+                        <i class="fas fa-star me-2 text-danger"></i>Películas Más Valoradas
+                    </h2>
+                </div>
                 <div class="card-body">
-                    <h5 class="card-title">{{ total_comments }}</h5>
+                    <div class="table-responsive">
+                        <table class="table table-dark table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Título</th>
+                                    <th>Número de Ratings</th>
+                                    <th>Rating Promedio</th>
+                                    <th>Total de Comentarios</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for movie in top_rated_movies %}
+                                <tr>
+                                    <td>{{ movie.title }}</td>
+                                    <td>{{ movie.total_ratings }}</td>
+                                    <td>
+                                        <div class="rating-stars">
+                                            {{ movie.average_rating | round(1) }}
+                                            <i class="fas fa-star text-warning ms-2"></i>
+                                        </div>
+                                    </td>
+                                    <td>{{ movie.total_comments }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lista de Películas -->
+            <div class="card bg-dark border-0 shadow-lg">
+                <div class="card-header bg-transparent border-bottom border-secondary">
+                    <h2 class="text-white mb-0">
+                        <i class="fas fa-film me-2 text-danger"></i>Catálogo de Películas
+                    </h2>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-dark table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Imagen</th>
+                                    <th>Título</th>
+                                    <th>Género</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for movie in movies %}
+                                <tr>
+                                    <td>{{ movie.id }}</td>
+                                    <td>
+                                        <img src="{{ movie.image_url }}" 
+                                                alt="{{ movie.title }}" 
+                                                class="img-thumbnail bg-dark border-secondary"
+                                                style="width: 100px; height: auto;">
+                                    </td>
+                                    <td>{{ movie.title }}</td>
+                                    <td>{{ movie.genre }}</td>
+                                    <td>
+                                        <div class="btn-group">
+                                            <a href="{{ url_for('edit_movie', movie_id=movie.id) }}" 
+                                                class="btn btn-warning btn-sm">
+                                                <i class="fas fa-edit me-1"></i>Editar
+                                            </a>
+                                            <form action="{{ url_for('movie_delete', movie_id=movie['id']) }}" 
+                                                    method="post" 
+                                                    class="d-inline">
+                                                <input type="hidden" name="next" value="admin_dashboard">
+                                                <button type="submit" 
+                                                        class="btn btn-danger btn-sm ms-2"
+                                                        onclick="return confirm('¿Estás seguro de que deseas eliminar esta película?');">
+                                                    <i class="fas fa-trash-alt me-1"></i>Eliminar
+                                                </button>
+                                            </form>
+                                            <a href="{{ url_for('movie_comments', movie_id=movie['id']) }}" 
+                                                class="btn btn-info btn-sm ms-2">
+                                                <i class="fas fa-comments me-1"></i>Comentarios
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-
-    <!-- Películas más valoradas -->
-    <h2 class="mt-5">Películas Más Valoradas</h2>
-    <table class="table table-striped mt-3">
-        <thead>
-            <tr>
-                <th>Título</th>
-                <th>Número de Ratings</th>
-                <th>Rating Promedio</th>
-                <th>Total de Comtarios</tr>
-            </tr>
-        </thead>
-        <tbody>
-            {% for movie in top_rated_movies %}
-            <tr>
-                <td>{{ movie.title }}</td>
-                <td>{{ movie.total_ratings  }}</td>
-                <td>{{ movie.average_rating | round(1) }}</td>
-                <td>{{ movie.total_comments }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-
-    
-
-    <!-- Lista de Películas -->
-    <h2 class="mt-5">Lista de Películas</h2>
-    <table class="table table-bordered">
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Image</th>
-                <th>Título</th>
-                <th>Género</th>
-                <th>Acciones</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for movie in movies %}
-            <tr>
-                <td>{{ movie.id }}</td>
-                <td><img src="{{ movie.image_url }}" alt="{{ movie.title }}" style="width: 100px; height: auto;"></td>
-                <td>{{ movie.title }}</td>
-                <td>{{ movie.genre }}</td>
-                <td>
-                    <a href="{{ url_for('edit_movie', movie_id=movie.id) }}" class="btn btn-warning">Editar</a>
-                    <form action="{{ url_for('movie_delete', movie_id=movie['id']) }}" method="post" style="display:inline;">
-                        <input type="hidden" name="next" value="admin_dashboard">
-                        <button type="submit" class="btn btn-danger" onclick="return confirm('¿Estás seguro de que deseas eliminar esta película?');">Eliminar</button>
-                    </form>
-                    <a href="{{ url_for('movie_comments', movie_id=movie['id']) }}" class="btn btn-info">Ver Comentarios</a>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
 </div>
 
-<!-- Chart.js para Gráficos -->
-<canvas id="movieRatingsChart" width="400" height="200"></canvas>
+<!-- Chart.js Configuration -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     const ctx = document.getElementById('movieRatingsChart').getContext('2d');
     const movieRatingsChart = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: {{ top_rated_movies|map(attribute='title')|list }},
+            labels: {{ top_rated_movies|map(attribute='title')|list|tojson }},
             datasets: [{
                 label: 'Rating Promedio',
-                data: {{ top_rated_movies|map(attribute='average_rating')|list }},
-                backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                borderColor: 'rgba(75, 192, 192, 1)',
+                data: {{ top_rated_movies|map(attribute='average_rating')|list|tojson }},
+                backgroundColor: 'rgba(229, 9, 20, 0.2)',
+                borderColor: 'rgba(229, 9, 20, 1)',
                 borderWidth: 1
             }]
         },
         options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    labels: {
+                        color: 'white'
+                    }
+                }
+            },
             scales: {
                 y: {
-                    beginAtZero: true
+                    beginAtZero: true,
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    },
+                    ticks: {
+                        color: 'white'
+                    }
+                },
+                x: {
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    },
+                    ticks: {
+                        color: 'white'
+                    }
                 }
             }
         }
