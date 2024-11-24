@@ -493,5 +493,140 @@ def logout():
     flash('Sesión cerrada exitosamente.', 'success')
     return redirect(url_for('login'))
 
+# Rating
+@app.route('/movie/<int:movie_id>/rate', methods=['POST'])
+def rate_movie(movie_id):
+    if 'user_id' not in session:
+        return redirect(url_for('login'))  # Redirigir al login si no está autenticado
+
+    user_id = session['user_id']
+    rating = request.form.get('rating')
+
+    if not rating or not rating.isdigit() or int(rating) < 1 or int(rating) > 5:
+        flash('Por favor selecciona una calificación válida entre 1 y 5.', 'danger')
+        return redirect(url_for('movie_detail', movie_id=movie_id))
+
+    rating = int(rating)
+
+    cursor = db.database.cursor()
+    # Verificar si el usuario ya ha calificado esta película
+    cursor.execute("""
+        SELECT id FROM ratings WHERE user_id = %s AND movie_id = %s
+    """, (user_id, movie_id))
+    existing_rating = cursor.fetchone()
+
+    if existing_rating:
+        # Actualizar rating existente
+        cursor.execute("""
+            UPDATE ratings SET rating = %s WHERE id = %s
+        """, (rating, existing_rating['id']))
+    else:
+        # Insertar nuevo rating
+        cursor.execute("""
+            INSERT INTO ratings (user_id, movie_id, rating) VALUES (%s, %s, %s)
+        """, (user_id, movie_id, rating))
+    
+    db.database.commit()
+    cursor.close()
+    flash('¡Gracias por calificar esta película!', 'success')
+    return redirect(url_for('movie_detail', movie_id=movie_id))
+
+#Funcion agregar a favoritos
+@app.route('/movie/<int:movie_id>/favorite', methods=['POST'])
+def add_to_favorites(movie_id):
+    if 'user_id' not in session:
+        flash('Por favor inicia sesión para usar esta función.', 'danger')
+        return redirect(url_for('login'))
+
+    user_id = session['user_id']
+    cursor = db.database.cursor()
+
+    try:
+        cursor.execute("""
+            INSERT INTO favorites (user_id, movie_id)
+            VALUES (%s, %s)
+        """, (user_id, movie_id))
+        db.database.commit()
+        flash('Película agregada a favoritos.', 'success')
+    except mysql.connector.errors.IntegrityError:
+        flash('Esta película ya está en tus favoritos.', 'warning')
+    finally:
+        cursor.close()
+
+    return redirect(url_for('movie_detail', movie_id=movie_id))
+
+
+#Crear listas personalizadas
+@app.route('/user/create_list', methods=['POST'])
+def create_list():
+    if 'user_id' not in session:
+        flash('Por favor inicia sesión para acceder a esta funcionalidad.', 'danger')
+        return redirect(url_for('login'))
+
+    user_id = session['user_id']
+    list_name = request.form['list_name']
+
+    cursor = db.database.cursor()
+    cursor.execute("""
+        INSERT INTO custom_lists (user_id, name, created_at)
+        VALUES (%s, %s, NOW())
+    """, (user_id, list_name))
+    db.database.commit()
+    cursor.close()
+
+    flash('Lista personalizada creada exitosamente.', 'success')
+    return redirect(url_for('user_dashboard'))
+
+
+#Ageragr una pelicula a la lista
+@app.route('/add_to_list', methods=['POST'])
+def add_to_list():
+    if 'user_id' not in session:
+        flash("Por favor, inicia sesión para agregar películas a tus listas.", "danger")
+        return redirect(url_for('login'))
+
+    list_id = request.form['list_id']
+    movie_id = request.form['movie_id']
+
+    cursor = db.database.cursor()
+    try:
+        # Verificar si la película ya está en la lista
+        cursor.execute("""
+            SELECT * FROM custom_list_items WHERE list_id = %s AND movie_id = %s
+        """, (list_id, movie_id))
+        if cursor.fetchone():
+            flash("La película ya está en la lista seleccionada.", "warning")
+        else:
+            # Agregar la película a la lista
+            cursor.execute("""
+                INSERT INTO custom_list_items (list_id, movie_id)
+                VALUES (%s, %s)
+            """, (list_id, movie_id))
+            db.database.commit()
+            flash("Película agregada a la lista con éxito.", "success")
+    except Exception as e:
+        flash(f"Error al agregar la película a la lista: {str(e)}", "danger")
+    finally:
+        cursor.close()
+
+    return redirect(url_for('movie_detail', movie_id=movie_id))
+
+
+
+
+#Ver una lista
+@app.route('/lists/<int:list_id>')
+def view_list(list_id):
+    cursor = db.database.cursor(dictionary=True)
+    cursor.execute("""
+        SELECT m.* FROM custom_list_items cli
+        JOIN movies m ON cli.movie_id = m.id
+        WHERE cli.list_id = %s
+    """, (list_id,))
+    movies = cursor.fetchall()
+    cursor.close()
+
+    return render_template('view_list.html', movies=movies)
+
 if __name__ == '__main__':
     app.run(debug=True)
