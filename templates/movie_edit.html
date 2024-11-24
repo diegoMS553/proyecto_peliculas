@@ -5,37 +5,37 @@
 {% block content %}
     <div class="container my-5">
         <h1 class="text-center">Editar Pelicula</h1>
-        <form method="POST" action="{{ url_for('movie_edit', movie_id=movie.id) }}" class="mt-4">
+        <form method="POST" action="{{ url_for('edit_movie', movie_id=movie.id) }}" class="mt-4">
             <div class="form-group">
                 <label for="title">Titulo</label>
                 <input type="text" name="title" class="form-control" value="{{ movie.title }}" required>
             </div>
-
+        
             <div class="form-group">
                 <label for="director">Director</label>
                 <input type="text" name="director" class="form-control" value="{{ movie.director }}" required>
             </div>
-
+        
             <div class="form-group">
                 <label for="genre">Genero</label>
                 <input type="text" name="genre" class="form-control" value="{{ movie.genre }}" required>
             </div>
-
+        
             <div class="form-group">
                 <label for="year">Año</label>
                 <input type="number" name="year" class="form-control" value="{{ movie.year }}" required>
             </div>
-
+        
             <div class="form-group">
                 <label for="synopsis">Synopsis</label>
                 <textarea name="synopsis" class="form-control" rows="4">{{ movie.synopsis }}</textarea>
             </div>
-
+        
             <div class="form-group">
                 <label for="image_url">Imagen URL</label>
                 <input type="text" name="image_url" class="form-control" value="{{ movie.image_url }}">
             </div>
-
+        
             <div class="text-center">
                 <button type="submit" class="btn btn-warning">Actualizar Pelicula</button>
                 <a href="{{ url_for('movies_list') }}" class="btn btn-secondary">Regresar a la lista</a>
