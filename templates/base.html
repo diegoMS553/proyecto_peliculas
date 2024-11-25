@@ -1,85 +1,247 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Mi IcoFlix{% endblock %}</title>
-    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
     <style>
-        .fa-star, .fa-star-o {
+        :root {
+            --primary-color: #e50914;
+            --secondary-color: #221f1f;
+            --text-color: #ffffff;
+        }
+
+        body {
+            background-color: #141414;
+            color: var(--text-color);
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        .navbar {
+            background-color: transparent !important;
+            transition: background-color 0.3s ease;
+            padding: 1rem 2rem;
+        }
+
+        .navbar.scrolled {
+            background-color: var(--secondary-color) !important;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        .navbar-brand {
+            color: var(--primary-color) !important;
+            font-size: 1.8rem;
+            font-weight: bold;
+        }
+
+        .nav-link {
+            color: var(--text-color) !important;
+            margin: 0 0.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .nav-link:hover {
+            color: var(--primary-color) !important;
+            transform: translateY(-2px);
+        }
+
+        .active-link {
+            border-bottom: 2px solid var(--primary-color);
+        }
+
+        .btn-custom {
+            background-color: var(--primary-color);
+            color: var(--text-color);
+            border: none;
+            padding: 0.5rem 1.5rem;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-custom:hover {
+            background-color: #f40612;
+            transform: scale(1.05);
+        }
+
+        .rating-stars {
             color: gold;
-            font-size: 1.5em;
+            font-size: 1.2rem;
+        }
+
+        .rating-stars i {
             cursor: pointer;
+            transition: all 0.2s ease;
         }
-        input[type="radio"] {
-            display: none;
+
+        .rating-stars i:hover {
+            transform: scale(1.2);
         }
-        label:hover ~ label .fa-star,
-        label:hover .fa-star {
-            color: orange;
+
+        .user-avatar {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            background-color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        footer {
+            background-color: var(--secondary-color);
+            color: var(--text-color);
+            padding: 2rem 0;
+            margin-top: 3rem;
+        }
+
+        .content-wrapper {
+            min-height: calc(100vh - 180px);
+            padding: 2rem 0;
         }
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-light bg-light">
-        <a class="navbar-brand" href="{{ url_for('movies_list') }}">Mi IcoFlix</a>
-        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarNav">
-            <ul class="navbar-nav">
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('movies_list') }}">Películas</a>
-                </li>
-                {% if session.get('role') == 'admin' %}
+    <nav class="navbar navbar-expand-lg fixed-top">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('movies_list') }}">
+                <i class="fas fa-film me-2"></i>IcoFlix
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <i class="fas fa-bars text-white"></i>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('admin_dashboard') }}">Dashboard</a>
+                        <a class="nav-link" href="{{ url_for('movies_list') }}">
+                            <i class="fas fa-home me-1"></i>Películas
+                        </a>
+                    </li>
+                    {% if session.get('role') == 'admin' %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                            <i class="fas fa-cog me-1"></i>Administración
+                        </a>
+                        <ul class="dropdown-menu bg-dark">
+                            <li><a class="dropdown-item text-white" href="{{ url_for('admin_dashboard') }}">
+                                <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+                            </a></li>
+                            <li><a class="dropdown-item text-white" href="{{ url_for('movie_create') }}">
+                                <i class="fas fa-plus-circle me-2"></i>Agregar Película
+                            </a></li>
+                            <li><a class="dropdown-item text-white" href="{{ url_for('add_admin') }}">
+                                <i class="fas fa-user-plus me-2"></i>Agregar Admin
+                            </a></li>
+                            <li><a class="dropdown-item text-white" href="{{ url_for('admin_statistics') }}">
+                                <i class="fas fa-chart-bar me-2"></i>Estadísticas
+                            </a></li>
+                        </ul>
+                    </li>
+                    {% elif session.get('role') == 'user' %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                            <i class="fas fa-user me-1"></i>Mi Cuenta
+                        </a>
+                        <ul class="dropdown-menu bg-dark">
+                            <li><a class="dropdown-item text-white" href="{{ url_for('user_dashboard') }}">
+                                <i class="fas fa-user-circle me-2"></i>Mi Perfil
+                            </a></li>
+                            <li><a class="dropdown-item text-white" href="{{ url_for('user_statistics') }}">
+                                <i class="fas fa-chart-line me-2"></i>Mis Estadísticas
+                            </a></li>
+                        </ul>
+                    </li>
+                    {% endif %}
+                </ul>
+                <ul class="navbar-nav">
+                    {% if session.get('user_id') %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" data-bs-toggle="dropdown">
+                            <div class="user-avatar me-2">
+                                {{ session['username'][0].upper() }}
+                            </div>
+                            {{ session['username'] }}
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end bg-dark">
+                            <li><a class="dropdown-item text-white" href="{{ url_for('logout') }}">
+                                <i class="fas fa-sign-out-alt me-2"></i>Cerrar Sesión
+                            </a></li>
+                        </ul>
+                    </li>
+                    {% else %}
+                    <li class="nav-item">
+                        <a class="nav-link btn-custom me-2" href="{{ url_for('login') }}">
+                            <i class="fas fa-sign-in-alt me-1"></i>Iniciar Sesión
+                        </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('add_admin') }}">Agregar Administrador</a>
+                        <a class="nav-link btn-custom" href="{{ url_for('register') }}">
+                            <i class="fas fa-user-plus me-1"></i>Registrarse
+                        </a>
                     </li>
-                {% elif session.get('role') == 'user' %}
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('user_dashboard') }}">Mi Perfil</a>
-                    </li>
-                {% endif %}
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('about') }}">Acerca</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('contact') }}">Contáctanos</a>
-                </li>
-            </ul>
-            <ul class="navbar-nav ml-auto">
-                {% if session.get('user_id') %}
-                    <li class="nav-item">
-                        <a class="nav-link">Bienvenido, {{ session['username'] }}</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('logout') }}">Cerrar Sesión</a>
-                    </li>
-                {% else %}
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('login') }}">Iniciar Sesión</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('register') }}">Registrarse</a>
-                    </li>
-                {% endif %}
-            </ul>
+                    {% endif %}
+                </ul>
+            </div>
         </div>
     </nav>
 
-    <div class="container my-5">
-        {% block content %}{% endblock %}
+    <div class="content-wrapper">
+        <div class="container">
+            {% block content %}{% endblock %}
+        </div>
     </div>
 
-    <footer class="bg-light text-center py-3">
-        <p>&copy; 2024 Mi IcoFlix. Todos los derechos reservados.</p>
+    <footer>
+        <div class="container">
+            <div class="row">
+                <div class="col-md-4">
+                    <h5><i class="fas fa-film me-2"></i>IcoFlix</h5>
+                    <p>Tu plataforma de películas favorita</p>
+                </div>
+                <div class="col-md-4">
+                    <h5>Enlaces Rápidos</h5>
+                    <ul class="list-unstyled">
+                        <li><a href="{{ url_for('about') }}" class="text-white text-decoration-none">
+                            <i class="fas fa-info-circle me-2"></i>Acerca de
+                        </a></li>
+                        <li><a href="{{ url_for('contact') }}" class="text-white text-decoration-none">
+                            <i class="fas fa-envelope me-2"></i>Contáctanos
+                        </a></li>
+                    </ul>
+                </div>
+                <div class="col-md-4">
+                    <h5>Síguenos</h5>
+                    <div class="social-icons">
+                        <a href="#" class="text-white me-3"><i class="fab fa-facebook fa-lg"></i></a>
+                        <a href="#" class="text-white me-3"><i class="fab fa-twitter fa-lg"></i></a>
+                        <a href="#" class="text-white me-3"><i class="fab fa-instagram fa-lg"></i></a>
+                    </div>
+                </div>
+            </div>
+            <hr class="bg-light">
+            <div class="text-center">
+                <p>&copy; 2024 IcoFlix. Todos los derechos reservados.</p>
+            </div>
+        </div>
     </footer>
 
-    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <!-- Bootstrap 5 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Navbar Scroll Effect -->
+    <script>
+        window.addEventListener('scroll', function() {
+            if (window.scrollY > 50) {
+                document.querySelector('.navbar').classList.add('scrolled');
+            } else {
+                document.querySelector('.navbar').classList.remove('scrolled');
+            }
+        });
+    </script>
 </body>
 </html>
