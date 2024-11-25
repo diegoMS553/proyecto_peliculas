@@ -3,46 +3,120 @@
 {% block title %}Buscar Películas{% endblock %}
 
 {% block content %}
-    <div class="container mt-5">
-        <h1 class="text-center mb-4">Buscar Películas</h1>
-        <form method="POST" action="{{ url_for('movie_search') }}" class="form-inline justify-content-center">
-            <input type="text" name="query" class="form-control w-50" placeholder="Buscar por título, género o director">
-            <button type="submit" class="btn btn-primary ml-2">Buscar</button>
-        </form>
+<div class="container mt-5 pt-5">
+    <div class="row justify-content-center">
+        <div class="col-12">
+            <h1 class="text-center mb-4 text-white">
+                <i class="fas fa-search me-2"></i>Buscar Películas
+            </h1>
+            
+            <form method="POST" action="{{ url_for('movie_search') }}" class="d-flex justify-content-center mb-5">
+                <div class="input-group w-75">
+                    <input type="text" name="query" class="form-control bg-dark text-white" 
+                           placeholder="Buscar por título, género o director">
+                    <button type="submit" class="btn btn-custom">
+                        <i class="fas fa-search me-2"></i>Buscar
+                    </button>
+                </div>
+            </form>
 
-        {% if movies %}
-            <ul class="list-group mt-4">
+            {% if movies %}
+            <div class="row row-cols-1 g-4">
                 {% for movie in movies %}
-                <div class="card shadow-sm h-100">
-                    <div class="row no-gutters">
-                        <div class="col-md-4">
-                            <img src="{{ movie.image_url }}" alt="{{ movie.title }}" class="card-img-top" style="height: 100%; object-fit: cover;">
-                        </div>
-                        <div class="col-md-8">
-                            <div class="card-body">
-                                <h5 class="card-title">
-                                    <a href="{{ url_for('movie_detail', movie_id=movie.id) }}" class="text-dark">{{ movie.title }} ({{ movie.year }})</a>
-                                </h5>
-                                <p class="card-text">
-                                    <span class="badge badge-primary">{{ movie.genre }}</span>
-                                </p>
-                                <p class="card-text">
-                                    <small class="text-muted">Dirigido por: {{ movie.director }}</small>
-                                </p>
-                                <div class="mt-3">
-                                    <a href="{{ url_for('movie_edit', movie_id=movie.id) }}" class="btn btn-warning btn-sm">Editar</a>
-                                    <form method="POST" action="{{ url_for('movie_delete', movie_id=movie.id) }}" style="display:inline;">
-                                        <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('¿Estás seguro de que deseas eliminar esta película?');">Eliminar</button>
-                                    </form>
+                <div class="col">
+                    <div class="card bg-dark text-white h-100 movie-card">
+                        <div class="row g-0">
+                            <div class="col-md-4">
+                                <img src="{{ movie.image_url }}" alt="{{ movie.title }}" 
+                                     class="movie-image rounded-start">
+                            </div>
+                            <div class="col-md-8">
+                                <div class="card-body">
+                                    <h5 class="card-title">
+                                        <a href="{{ url_for('movie_detail', movie_id=movie.id) }}" 
+                                           class="text-white text-decoration-none">
+                                            {{ movie.title }} ({{ movie.year }})
+                                        </a>
+                                    </h5>
+                                    <span class="badge bg-primary mb-2">{{ movie.genre }}</span>
+                                    <p class="card-text">
+                                        <small class="text-light">
+                                            <i class="fas fa-user-tie me-2"></i>Dirigido por: {{ movie.director }}
+                                        </small>
+                                    </p>
+                                    
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
                 {% endfor %}
-            </ul>
-        {% else %}
-            <p class="mt-4">No se encontraron resultados.</p>
-        {% endif %}
+            </div>
+            {% else %}
+            <div class="text-center text-white mt-4">
+                <i class="fas fa-film fa-3x mb-3"></i>
+                <p>No se encontraron resultados.</p>
+            </div>
+            {% endif %}
+        </div>
     </div>
+</div>
+
+<style>
+.movie-card {
+    transition: transform 0.3s ease;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: linear-gradient(145deg, #1a1a1a, #2a2a2a);
+}
+
+.movie-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+
+.movie-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.input-group .form-control {
+    border: 1px solid rgba(255,255,255,0.1);
+}
+
+.input-group .form-control:focus {
+    background-color: #333 !important;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(229, 9, 20, 0.25);
+}
+
+.badge {
+    background-color: var(--primary-color) !important;
+    padding: 0.5em 1em;
+    font-size: 0.8rem;
+}
+
+.btn-custom {
+    background-color: var(--primary-color);
+    color: white;
+    transition: all 0.3s ease;
+}
+
+.btn-custom:hover {
+    background-color: #f40612;
+    color: white;
+    transform: translateY(-2px);
+}
+
+.btn-danger {
+    background-color: #dc3545;
+    border: none;
+    transition: all 0.3s ease;
+}
+
+.btn-danger:hover {
+    background-color: #c82333;
+    transform: translateY(-2px);
+}
+</style>
 {% endblock %}
