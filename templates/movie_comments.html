@@ -5,15 +5,22 @@
 {% block content %}
 <div class="container my-5">
     <h1>Comentarios para "{{ movie.title }}"</h1>
-    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-primary my-3">Regresar al Dashboard</a>
+    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-custom my-3">Regresar al Dashboard</a>
+
     <div class="list-group">
         {% for comment in comments %}
-        <div class="list-group-item">
-            <p>{{ comment.comment }}</p>
-            <small class="text-muted">Por {{ comment.username }} el {{ comment.created_at }}</small>
-        </div>
-        {% else %}
-        <div class="alert alert-info">No hay comentarios para esta película.</div>
+            <div class="p-3 mb-3 rounded" style="background-color: #221f1f; border: 1px solid #e50914;">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <p class="mb-1">
+                            <i class="fas fa-user me-2"></i>
+                            <strong class="text-white">{{ comment.username }}</strong>
+                            <small class="text-white-50 ms-2">({{comment.created_at}})</small>
+                        </p>
+                        <p class="text-white mb-2">{{ comment.comment }}</p>
+                    </div>
+                </div>
+            </div>
         {% endfor %}
     </div>
 </div>
