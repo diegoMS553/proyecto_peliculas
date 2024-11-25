@@ -3,8 +3,15 @@ from flask_bcrypt import Bcrypt
 from rating import get_movie_rating
 import database as db
 import mysql.connector
+import os
 
 app = Flask(__name__)
+app.config['UPLOAD_FOLDER'] = 'static/images'  # Carpeta donde se guardarán las imágenes
+app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif'}
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
+
 app.secret_key = 'your_secret_key'
 bcrypt = Bcrypt(app)
 
@@ -41,6 +48,9 @@ def movie_detail(movie_id):
     if not movie:
         cursor.close()
         return "Película no encontrada", 404
+    
+    # Si la película tiene un trailer_url
+    trailer_url = movie['trailer_url'] if 'trailer_url' in movie else None
 
     # Obtener el promedio y total de ratings
     average_rating, total_ratings = get_movie_rating(movie_id)
@@ -123,7 +133,8 @@ def movie_detail(movie_id):
         total_pages=total_pages,
         page=page,
         user_already_rated=user_already_rated,
-        custom_lists=custom_lists  # Pasar las listas personalizadas
+        custom_lists=custom_lists,  # Pasar las listas personalizadas
+        trailer_url=trailer_url # Pasar la URL del trailer
 )
 
 
@@ -210,30 +221,42 @@ def edit_comment(movie_id, comment_id):
     return render_template('edit_comment.html', movie_id=movie_id, comment=comment)
 
 
-@app.route('/movie/create', methods=['GET', 'POST'])
+@app.route('/admin/movie_create', methods=['GET', 'POST'])
 def movie_create():
     if 'user_id' not in session or session.get('role') != 'admin':
         flash('Acceso no autorizado.', 'danger')
         return redirect(url_for('login'))
-    
+
     if request.method == 'POST':
         title = request.form['title']
         director = request.form['director']
         genre = request.form['genre']
         year = request.form['year']
         synopsis = request.form['synopsis']
-        image_url = request.form['image_url']  # Nuevo campo para la URL de la imagen
+        trailer_url = request.form['trailer_url']
 
+        # Manejo del archivo de imagen
+        file = request.files['image']
+        if file and allowed_file(file.filename):
+            filename = file.filename
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(filepath)  # Guardar la imagen en la carpeta
+            image_url = f"/{filepath}"  # URL relativa de la imagen para usar en el HTML
+        else:
+            image_url = None
+
+        # Insertar película en la base de datos
         cursor = db.database.cursor()
-        cursor.execute(
-            "INSERT INTO movies (title, director, genre, year, synopsis, image_url) VALUES (%s, %s, %s, %s, %s, %s)",
-            (title, director, genre, year, synopsis, image_url)
-        )
+        cursor.execute("""
+            INSERT INTO movies (title, director, genre, year, synopsis, image_url, trailer_url)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, (title, director, genre, year, synopsis, image_url, trailer_url))
         db.database.commit()
-        cursor.close()
-        return redirect(url_for('movies_list'))
-    
+        flash('Película creada exitosamente.', 'success')
+        return redirect(url_for('admin_dashboard'))
+
     return render_template('movie_create.html')
+
 
 
 @app.route('/admin/edit_movie/<int:movie_id>', methods=['GET', 'POST'])
@@ -256,13 +279,23 @@ def edit_movie(movie_id):
         genre = request.form['genre']
         year = request.form['year']
         synopsis = request.form['synopsis']
-        image_url = request.form['image_url']
+        trailer_url = request.form['trailer_url']
+
+        # Manejo del archivo de imagen
+        file = request.files['image']
+        if file and allowed_file(file.filename):
+            filename = file.filename
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(filepath)
+            image_url = f"/{filepath}"
+        else:
+            image_url = movie['image_url']  # Mantener la imagen existente si no se sube una nueva
 
         cursor.execute("""
             UPDATE movies
-            SET title = %s, director = %s, genre = %s, year = %s, synopsis = %s, image_url = %s
+            SET title = %s, director = %s, genre = %s, year = %s, synopsis = %s, image_url = %s, trailer_url = %s
             WHERE id = %s
-        """, (title, director, genre, year, synopsis, image_url, movie_id))
+        """, (title, director, genre, year, synopsis, image_url, trailer_url, movie_id))
         db.database.commit()
         flash('Película actualizada exitosamente.', 'success')
         return redirect(url_for('admin_dashboard'))
@@ -627,6 +660,61 @@ def view_list(list_id):
     cursor.close()
 
     return render_template('view_list.html', movies=movies)
+
+@app.route('/user_statistics')
+def user_statistics():
+    if not session.get('user_id'):
+        flash("Debes iniciar sesión para ver tus estadísticas.", "warning")
+        return redirect(url_for('login'))
+
+    user_id = session['user_id']
+
+    cursor = db.database.cursor(dictionary=True)
+    cursor.execute("""
+        SELECT 
+            (SELECT COUNT(*) FROM comments WHERE user_id = %s) AS total_comments,
+            (SELECT COUNT(*) FROM ratings WHERE user_id = %s) AS total_ratings,
+            (SELECT m.genre 
+                FROM ratings r 
+                JOIN movies m ON r.movie_id = m.id 
+                WHERE r.user_id = %s 
+                GROUP BY m.genre 
+                ORDER BY COUNT(*) DESC 
+                LIMIT 1) AS favorite_genre
+    """, (user_id, user_id, user_id))
+    stats = cursor.fetchone()
+    cursor.close()
+
+    return render_template('user_statistics.html', stats=stats)
+
+@app.route('/admin/statistics')
+def admin_statistics():
+    if 'user_id' not in session or session.get('role') != 'admin':
+        flash('Acceso no autorizado.', 'danger')
+        return redirect(url_for('login'))
+    
+
+    cursor = db.database.cursor(dictionary=True)
+    cursor.execute("""
+        SELECT 
+            u.id AS user_id,
+            u.username,
+            (SELECT COUNT(*) FROM comments WHERE user_id = u.id) AS total_comments,
+            (SELECT COUNT(*) FROM ratings WHERE user_id = u.id) AS total_ratings,
+            (SELECT m.genre 
+                FROM ratings r 
+                JOIN movies m ON r.movie_id = m.id 
+                WHERE r.user_id = u.id 
+                GROUP BY m.genre 
+                ORDER BY COUNT(*) DESC 
+                LIMIT 1) AS favorite_genre
+        FROM users u;
+    """)
+    user_stats = cursor.fetchall()
+    cursor.close()
+
+    return render_template('admin_statistics.html', user_stats=user_stats)
+
 
 if __name__ == '__main__':
     app.run(debug=True)
