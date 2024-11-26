@@ -4,16 +4,137 @@ from rating import get_movie_rating
 import database as db
 import mysql.connector
 import os
+from abc import ABC, abstractmethod
+
+class BaseUser:
+    def __init__(self, user_data):
+        self.id = user_data['id']
+        self.username = user_data['username']
+        self.role = user_data['role']
+
+    @abstractmethod
+    def get_dashboard_data(self):
+        """Método abstracto para obtener datos del dashboard"""
+        pass
+
+class RegularUserDashboard(BaseUser):
+    def get_dashboard_data(self):
+        """Obtiene datos específicos para dashboard de usuario regular"""
+        user_id = self.id
+        cursor = db.database.cursor(dictionary=True)
+
+        # Obtener películas favoritas
+        cursor.execute("""
+            SELECT m.id, m.title, m.image_url
+            FROM movies m
+            JOIN favorites f ON m.id = f.movie_id
+            WHERE f.user_id = %s
+        """, (user_id,))
+        favorites = cursor.fetchall()
+
+        # Obtener listas personalizadas
+        cursor.execute("""
+            SELECT id, name, created_at
+            FROM custom_lists
+            WHERE user_id = %s
+        """, (user_id,))
+        custom_lists = cursor.fetchall()
+
+        # Obtener los elementos de cada lista personalizada
+        lists_with_movies = []
+        for custom_list in custom_lists:
+            cursor.execute("""
+                SELECT m.id, m.title, m.image_url
+                FROM custom_list_items cli
+                JOIN movies m ON cli.movie_id = m.id
+                WHERE cli.list_id = %s
+            """, (custom_list['id'],))
+            movies_in_list = cursor.fetchall()
+            custom_list['movies'] = movies_in_list
+            lists_with_movies.append(custom_list)
+
+        cursor.close()
+        return {
+            'favorites': favorites,
+            'custom_lists': lists_with_movies
+        }
+
+class AdminUserDashboard(BaseUser):
+    def get_dashboard_data(self):
+        """Obtiene datos específicos para dashboard de administrador"""
+        cursor = db.database.cursor(dictionary=True)
+
+        # Estadísticas clave
+        cursor.execute('SELECT COUNT(*) AS total_movies FROM movies')
+        total_movies = cursor.fetchone()['total_movies']
+
+        cursor.execute("SELECT COUNT(*) AS total_users FROM users WHERE role = 'user'")
+        total_users = cursor.fetchone()['total_users']
+
+        cursor.execute('SELECT COUNT(*) AS total_comments FROM comments')
+        total_comments = cursor.fetchone()['total_comments']
+
+        # Películas más valoradas
+        cursor.execute("""
+            SELECT 
+                m.id, m.title, m.year, m.genre, m.image_url, 
+                COALESCE(ROUND(AVG(r.rating), 1), 0) AS average_rating,
+                COUNT(r.id) AS total_ratings,
+                (SELECT COUNT(*) FROM comments c WHERE c.movie_id = m.id) AS total_comments
+            FROM movies m
+            LEFT JOIN ratings r ON m.id = r.movie_id
+            GROUP BY m.id
+        """)
+
+        top_rated_movies = cursor.fetchall()
+
+        # Lista de todas las películas
+        cursor.execute('SELECT * FROM movies')
+        movies = cursor.fetchall()
+
+        cursor.close()
+
+        return {
+            'movies': movies,
+            'total_movies': total_movies,
+            'total_users': total_users,
+            'total_comments': total_comments,
+            'top_rated_movies': top_rated_movies
+        }
+
+class UserFactory:
+    @staticmethod
+    def create_user(user_data):
+        """Fábrica para crear el tipo correcto de usuario"""
+        if user_data['role'] == 'admin':
+            return AdminUserDashboard(user_data)
+        else:
+            return RegularUserDashboard(user_data)
+
+class UserAuthenticator:
+    def __init__(self, bcrypt):
+        self.bcrypt = bcrypt
+
+    def authenticate(self, username, password):
+        """Autenticar usuario y devolver instancia de usuario"""
+        cursor = db.database.cursor(dictionary=True)
+        cursor.execute('SELECT * FROM users WHERE username = %s', (username,))
+        user_data = cursor.fetchone()
+        cursor.close()
+
+        if user_data and self.bcrypt.check_password_hash(user_data['password'], password):
+            return UserFactory.create_user(user_data)
+        return None
 
 app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = 'static/images'  # Carpeta donde se guardarán las imágenes
+app.config['UPLOAD_FOLDER'] = '/home/diegoMS553/mysite/static/images'
 app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg', 'gif'}
+app.secret_key = 'your_secret_key'
+bcrypt = Bcrypt(app)
+user_authenticator = UserAuthenticator(bcrypt)
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
-
-app.secret_key = 'your_secret_key'
-bcrypt = Bcrypt(app)
 
 @app.route('/')
 def movies_list():
@@ -379,6 +500,26 @@ def register():
 
     return render_template('register.html')
 
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+
+        user = user_authenticator.authenticate(username, password)
+        if user:
+            session['user_id'] = user.id
+            session['username'] = user.username
+            session['role'] = user.role
+
+            if isinstance(user, AdminUserDashboard):
+                return redirect(url_for('admin_dashboard'))
+            else:
+                return redirect(url_for('user_dashboard'))
+
+        flash('Usuario o contraseña incorrectos.', 'danger')
+    return render_template('login.html')
+
 #Agregar un admin
 @app.route('/admin/add', methods=['GET', 'POST'])
 def add_admin():
@@ -401,123 +542,47 @@ def add_admin():
 
     return render_template('add_admin.html')
 
-
-# Ruta para login
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
-
-        cursor = db.database.cursor(dictionary=True)  # Usar db.database
-        cursor.execute('SELECT * FROM users WHERE username = %s', (username,))
-        user = cursor.fetchone()
-        cursor.close()
-
-        if user and bcrypt.check_password_hash(user['password'], password):
-            session['user_id'] = user['id']
-            session['username'] = user['username']
-            session['role'] = user['role']
-
-            if user['role'] == 'admin':
-                return redirect(url_for('admin_dashboard'))
-            else:
-                return redirect(url_for('user_dashboard'))
-
-        flash('Usuario o contraseña incorrectos.', 'danger')
-    return render_template('login.html')
-
-
-# Ruta para el dashboard de usuarios
-@app.route('/user/dashboard', methods=['GET', 'POST'])
-def user_dashboard():
-    if 'user_id' not in session:
-        flash('Por favor inicia sesión para acceder a tu dashboard.', 'danger')
-        return redirect(url_for('login'))
-
-    user_id = session['user_id']
-    cursor = db.database.cursor(dictionary=True)
-
-    # Obtener películas favoritas
-    cursor.execute("""
-        SELECT m.id, m.title, m.image_url
-        FROM movies m
-        JOIN favorites f ON m.id = f.movie_id
-        WHERE f.user_id = %s
-    """, (user_id,))
-    favorites = cursor.fetchall()
-
-    # Obtener listas personalizadas
-    cursor.execute("""
-        SELECT id, name, created_at
-        FROM custom_lists
-        WHERE user_id = %s
-    """, (user_id,))
-    custom_lists = cursor.fetchall()
-
-    # Obtener los elementos de cada lista personalizada
-    lists_with_movies = []
-    for custom_list in custom_lists:
-        cursor.execute("""
-            SELECT m.id, m.title, m.image_url
-            FROM custom_list_items cli
-            JOIN movies m ON cli.movie_id = m.id
-            WHERE cli.list_id = %s
-        """, (custom_list['id'],))
-        movies_in_list = cursor.fetchall()
-        custom_list['movies'] = movies_in_list
-        lists_with_movies.append(custom_list)
-
-    cursor.close()
-    return render_template('user_dashboard.html', favorites=favorites, custom_lists=lists_with_movies)
-
 @app.route('/admin/dashboard')
 def admin_dashboard():
     if 'user_id' not in session or session.get('role') != 'admin':
         flash('Acceso no autorizado.', 'danger')
         return redirect(url_for('login'))
 
-    cursor = db.database.cursor(dictionary=True)
-
-    # Estadísticas clave
-    cursor.execute('SELECT COUNT(*) AS total_movies FROM movies')
-    total_movies = cursor.fetchone()['total_movies']
-
-    cursor.execute("SELECT COUNT(*) AS total_users FROM users WHERE role = 'user'")
-    total_users = cursor.fetchone()['total_users']
-
-    cursor.execute('SELECT COUNT(*) AS total_comments FROM comments')
-    total_comments = cursor.fetchone()['total_comments']
-
-    # Películas más valoradas
-    cursor.execute("""
-        SELECT 
-            m.id, m.title, m.year, m.genre, m.image_url, 
-            COALESCE(ROUND(AVG(r.rating), 1), 0) AS average_rating,
-            COUNT(r.id) AS total_ratings,
-            (SELECT COUNT(*) FROM comments c WHERE c.movie_id = m.id) AS total_comments
-        FROM movies m
-        LEFT JOIN ratings r ON m.id = r.movie_id
-        GROUP BY m.id
-    """)
-
-    top_rated_movies = cursor.fetchall()
-
-    # Lista de todas las películas
-    cursor.execute('SELECT * FROM movies')
-    movies = cursor.fetchall()
-
-    cursor.close()
+    # Recuperar datos del usuario de la sesión
+    user_data = {
+        'id': session['user_id'], 
+        'username': session['username'], 
+        'role': 'admin'
+    }
+    user = UserFactory.create_user(user_data)
+    
+    # Obtener datos del dashboard
+    dashboard_data = user.get_dashboard_data()
 
     return render_template(
         'admin_dashboard.html',
-        movies=movies,
-        total_movies=total_movies,
-        total_users=total_users,
-        total_comments=total_comments,
-        top_rated_movies=top_rated_movies,
+        **dashboard_data,
         username=session['username']
     )
+
+@app.route('/user/dashboard')
+def user_dashboard():
+    if 'user_id' not in session:
+        flash('Por favor inicia sesión para acceder a tu dashboard.', 'danger')
+        return redirect(url_for('login'))
+
+    # Recuperar datos del usuario de la sesión
+    user_data = {
+        'id': session['user_id'], 
+        'username': session['username'], 
+        'role': 'user'
+    }
+    user = UserFactory.create_user(user_data)
+    
+    # Obtener datos del dashboard
+    dashboard_data = user.get_dashboard_data()
+
+    return render_template('user_dashboard.html', **dashboard_data)
     
 # Ruta para logout
 @app.route('/logout')
@@ -675,12 +740,12 @@ def user_statistics():
             (SELECT COUNT(*) FROM comments WHERE user_id = %s) AS total_comments,
             (SELECT COUNT(*) FROM ratings WHERE user_id = %s) AS total_ratings,
             (SELECT m.genre 
-                FROM ratings r 
-                JOIN movies m ON r.movie_id = m.id 
-                WHERE r.user_id = %s 
-                GROUP BY m.genre 
-                ORDER BY COUNT(*) DESC 
-                LIMIT 1) AS favorite_genre
+             FROM ratings r 
+             JOIN movies m ON r.movie_id = m.id 
+             WHERE r.user_id = %s 
+             GROUP BY m.genre 
+             ORDER BY COUNT(*) DESC 
+             LIMIT 1) AS favorite_genre
     """, (user_id, user_id, user_id))
     stats = cursor.fetchone()
     cursor.close()
@@ -702,12 +767,12 @@ def admin_statistics():
             (SELECT COUNT(*) FROM comments WHERE user_id = u.id) AS total_comments,
             (SELECT COUNT(*) FROM ratings WHERE user_id = u.id) AS total_ratings,
             (SELECT m.genre 
-                FROM ratings r 
-                JOIN movies m ON r.movie_id = m.id 
-                WHERE r.user_id = u.id 
-                GROUP BY m.genre 
-                ORDER BY COUNT(*) DESC 
-                LIMIT 1) AS favorite_genre
+             FROM ratings r 
+             JOIN movies m ON r.movie_id = m.id 
+             WHERE r.user_id = u.id 
+             GROUP BY m.genre 
+             ORDER BY COUNT(*) DESC 
+             LIMIT 1) AS favorite_genre
         FROM users u;
     """)
     user_stats = cursor.fetchall()
@@ -718,3 +783,5 @@ def admin_statistics():
 
 if __name__ == '__main__':
     app.run(debug=True)
+
+
